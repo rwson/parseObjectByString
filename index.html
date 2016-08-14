@@ -48,72 +48,137 @@
     var str19 = "(attrNum + attrNum2) * 3";
     var str20 = "attrNum + attrNum2 > 3 ? 'true': 'false'";
 
-    var conditionReg = /((\!)?\=+|>(\=)?|<(\=)?|\|\||\&\&)/;
-    var boolReg = /\!+/;
-    var calculateReg = /[\+|\-|\/*|\/|\%]/;
+    var conditionReg = /((\!)?\=+|>(\=)?|<(\=)?|\|\||\&\&)/g;
+    var boolReg = /^\!+/;
+    var calculateReg = /[\+|\-|\/*|\/|\%]/g;
     var trinocularExpReg = /[\w\W]+\?[\w\W]+\:[\w\W]+/;
-    var bracketsReg = /^\([\w\W]+\)$/;
-    var bracketsReplace = /^\(|\)$/;
-    var attrReg = /(\w\W)+(\[(\w\W)+\])+/;
+    var bracketsReg = /^\([\w\W]+\)$/g;
+    var bracketsReplace = /^\(|\)$/g;
+    var attrReg = /(\w\W)+(\[(\w\W)+\])+/g;
 
     function trim(str) {
-    	return str.trim ? str.trim() : str.replace(/^\s+|\s+$/, "");
+        return str.trim ? str.trim() : str.replace(/^\s+|\s+$/, "");
     }
 
     function buildFunctionStr(str, context) {
-    	if(arguments.length < 2) {
-    		throw new Error("method exec must pass in two arguments");
-    	}
-    	var isCondition = false,
-    		condition = null,
-    		isBoolean = false,
-    		isCalculate = false,
-    		isTrinocular = false,
-    		isAttr = false,
-    		strArr = [str],
-    		strExec = "";
+        if (arguments.length < 2) {
+            throw new Error("method exec must pass in two arguments");
+        }
 
-		isCondition = conditionReg.test(str);
-		isBoolean = boolReg.test(str);
+        var isCondition = false,
+            condition = null,
+            isBoolean = false,
+            isCalculate = false,
+            isTrinocular = false,
+            isAttr = false,
+            strArr = [str],
+            strExec = "";
 
-		if(isCondition) {
-			condition = str.match(conditionReg)[0];
-			strArr = str.split(condition);
-		}
+        isCondition = conditionReg.test(str);
+        isBoolean = boolReg.test(str);
 
-		strArr = strArr.map(function(strIn) {
-			strIn = trim(strIn);
+        if (isCondition) {
+            condition = str.match(conditionReg)[0];
+            strArr = str.split(condition);
+        }
 
-			
+        strArr = strArr.map(function(strIn) {
+            var isConditionIn = false,
+                conditionIn = "",
+                isBooleanIn = false,
+                booleanIn = "",
+                isCalculateIn = false,
+                calculateIn = "",
+                isTrinocularIn = false,
+                isAttrIn = false,
+                strArrIn = [strIn];
 
-			try {
-				new Function("return this." + strIn).call(context);
-				strIn = "this." + strIn;
-			} catch (ex) {
-				strIn = strIn;
-			}
+            strIn = trim(strIn);
 
-			return strIn;
+            isConditionIn = conditionReg.test(strIn);
+            isCalculateIn = calculateReg.test(strIn);
+            isBooleanIn = boolReg.test(strIn);
 
-		});
+            if (isConditionIn) {
+                conditionIn = strIn.match(conditionReg)[0];
+                strArrIn = strIn.split(conditionIn);
 
-		if(isCondition) {
-			strExec = strArr.join(condition);
-		} else {
-			strExec = strArr.join("");
-		}
+                strIn = strArrIn.map(function(staI) {
+                    staI = trim(staI);
 
-		return strExec;
+                    try {
+                        new Function("return this." + staI).call(context);
+                        staI = "this." + staI;
+                    } catch (ex) {
+                        staI = staI;
+                    }
+
+                    return staI;
+                }).join(conditionIn);
+
+            } else if (isCalculateIn) {
+                calculateIn = strIn.match(calculateReg)[0];
+                strArrIn = strIn.split(calculateIn);
+
+                strIn = strArrIn.map(function(staI) {
+                    staI = trim(staI);
+
+                    try {
+                        new Function("return this." + staI).call(context);
+                        staI = "this." + staI;
+                    } catch (ex) {
+                        staI = staI;
+                    }
+
+                    return staI;
+                }).join(calculateIn);
+
+            } else if (isBooleanIn) {
+            	booleanIn = strIn.match(boolReg)[0];
+            	strIn = strIn.replace(booleanIn, "");
+
+            	try {
+            		new Function("return this." + strIn).call(context);
+            		strIn = "this." + strIn;
+            	} catch (ex) {
+
+            		console.log(strIn);
+
+            		strIn = strIn;
+            	}
+
+            	strIn = booleanIn + "(" + strIn + ")";
+
+            } else {
+                try {
+                    new Function("return this." + strIn).call(context);
+                    strIn = "this." + strIn;
+                } catch (ex) {
+                    strIn = strIn;
+                }
+            }
+
+            return strIn;
+
+        });
+
+        if (isCondition) {
+            strExec = strArr.join(condition);
+        } else {
+            strExec = strArr.join("");
+        }
+
+        return strExec;
     }
 
     function exec(str, context) {
-    	if(arguments.length < 2) {
-    		throw new Error("method exec must pass in two arguments");
-    	}
-    	return new Function("return " + buildFunctionStr(str, context)).call(context);
+        if (arguments.length < 2) {
+            throw new Error("method exec must pass in two arguments");
+        }
+        return new Function("return " + buildFunctionStr(str, context)).call(context);
     }
 
-    for (var i = 1; i <= 3; i++) {
+    for (var i = 1; i <= 18; i++) {
         console.group("str" + i + "'s execute result:");
         console.log("the expression is: " + window["str" + i]);
         console.log(exec(window["str" + i], obj));
