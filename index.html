@@ -37,7 +37,7 @@
     var str10 = "attrArr";
     var str11 = "attrArr.length";
     var str12 = "attrArr['length']";
-    var str13 = "attrArr.length != attrNum2";
+    var str13 = "attrArr.length == attrNum2";
     var str14 = "attrArr['length'] != attrNum2";
 
     var str15 = "attrObj.key";
@@ -45,15 +45,17 @@
     var str17 = "attrObj['key2'] == attrObj.key";
 
     var str18 = "attrNum + attrNum2";
-    var str19 = "(attrNum + attrNum2) * 3";
-    var str20 = "attrNum + attrNum2 > 3 ? 'true': 'false'";
+    var str19 = "attrNum + attrNum2 * 3";
+    var str20 = "(attrNum + attrNum2) * 3";
+    var str21 = "attrNum + attrNum2 > 3 ? 'true': 'false'";
+    var str22 = "(attrNum + attrArr['length']) < 3 ? true: false";
 
-    var conditionReg = /((\!)?\=+|>(\=)?|<(\=)?|\|\||\&\&)/g;
+    var conditionReg = /((\!)?\=+|>(\=)?|<(\=)?|\|\||\&\&)/;
     var boolReg = /^\!+/;
-    var calculateReg = /[\+|\-|\/*|\/|\%]/g;
+    var calculateReg = /[\+|\-|\/*|\/|\%]/;
     var trinocularExpReg = /[\w\W]+\?[\w\W]+\:[\w\W]+/;
-    var bracketsReg = /^\([\w\W]+\)$/g;
-    var bracketsReplace = /^\(|\)$/g;
+    var bracketsReg = /\([\w\W]+\)(\w\W)?/g;
+    var bracketsReplace = /\(|\)/g;
     var attrReg = /(\w\W)+(\[(\w\W)+\])+/g;
 
     function trim(str) {
@@ -62,7 +64,7 @@
 
     function buildFunctionStr(str, context) {
         if (arguments.length < 2) {
-            throw new Error("method exec must pass in two arguments");
+            throw new Error("method buildFunctionStr must pass in two arguments");
         }
 
         var isCondition = false,
@@ -90,6 +92,9 @@
                 isCalculateIn = false,
                 calculateIn = "",
                 isTrinocularIn = false,
+                withBrackets = false,
+                bracketsIn = "",
+                bracketsInStr = "",
                 isAttrIn = false,
                 strArrIn = [strIn];
 
@@ -98,6 +103,7 @@
             isConditionIn = conditionReg.test(strIn);
             isCalculateIn = calculateReg.test(strIn);
             isBooleanIn = boolReg.test(strIn);
+            withBrackets = bracketsReg.test(strIn);
 
             if (isConditionIn) {
                 conditionIn = strIn.match(conditionReg)[0];
@@ -115,8 +121,7 @@
 
                     return staI;
                 }).join(conditionIn);
-
-            } else if (isCalculateIn) {
+            } else if (isCalculateIn && !withBrackets) {
                 calculateIn = strIn.match(calculateReg)[0];
                 strArrIn = strIn.split(calculateIn);
 
@@ -133,6 +138,14 @@
                     return staI;
                 }).join(calculateIn);
 
+            } else if(withBrackets) {
+            	bracketsIn = strIn.match(bracketsReg)[0];
+
+            	bracketsInStr = buildFunctionStr(bracketsIn.replace(bracketsReplace, ""), context);
+            	strIn = buildFunctionStr(strIn.replace(bracketsIn, ""), context);
+
+            	strIn = "(" + bracketsInStr + ")" + strIn;
+
             } else if (isBooleanIn) {
             	booleanIn = strIn.match(boolReg)[0];
             	strIn = strIn.replace(booleanIn, "");
@@ -141,9 +154,6 @@
             		new Function("return this." + strIn).call(context);
             		strIn = "this." + strIn;
             	} catch (ex) {
-
-            		console.log(strIn);
-
             		strIn = strIn;
             	}
 
@@ -175,14 +185,19 @@
         if (arguments.length < 2) {
             throw new Error("method exec must pass in two arguments");
         }
-        return new Function("return " + buildFunctionStr(str, context)).call(context);
+        var execStr = buildFunctionStr(str, context);
+        console.log("executable expression is: " + execStr);
+        return new Function("return " + execStr).call(context);
     }
 
-    for (var i = 1; i <= 18; i++) {
-        console.group("str" + i + "'s execute result:");
-        console.log("the expression is: " + window["str" + i]);
-        console.log(exec(window["str" + i], obj));
-        console.groupEnd();
+    for (var i = 1; i <= 25; i++) {
+    	var variable = window["str" + i];
+    	if(variable !== undefined) {
+	        console.group("str" + i + "'s execute result:");
+	        console.log("orignal expression is: " + window["str" + i]);
+	        console.log(exec(window["str" + i], obj));
+	        console.groupEnd();
+    	}
     }
     </script>
 </body>
